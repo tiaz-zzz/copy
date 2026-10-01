@@ -136,6 +136,11 @@ function setupMouseLook(canvas) {
         toast(pointerLocked ? '第一视角已锁定 — 按 ESC 退出' : '已退出第一视角 — 点击画面继续');
     });
     document.addEventListener('pointerlockerror', () => toast('浏览器拒绝了鼠标锁定'));
+    // 右键: 锁定中 = 退出第一视角; 未锁定 = 屏蔽浏览器菜单
+    document.addEventListener('mousedown', (e) => {
+        if (pointerLocked && e.button === 2) document.exitPointerLock();
+    });
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('mousemove', (e) => {
         if (!pointerLocked) return;
         yaw -= e.movementX * 0.0022;
