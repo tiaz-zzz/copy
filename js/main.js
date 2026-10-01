@@ -273,28 +273,6 @@ function wireUI() {
         if (e.key === 'Enter') toast('没有找到更多匹配的空间');
     });
 
-    // 点赞 / 收藏 / 评论 / 分享 / 声音
-    let likeCount = 49, saveCount = 32;
-    $('btn-like').addEventListener('click', function () {
-        this.classList.toggle('liked');
-        likeCount += this.classList.contains('liked') ? 1 : -1;
-        $('like-count').textContent = likeCount;
-    });
-    $('btn-save').addEventListener('click', function () {
-        this.classList.toggle('saved');
-        saveCount += this.classList.contains('saved') ? 1 : -1;
-        $('save-count').textContent = saveCount;
-        toast(this.classList.contains('saved') ? '已收藏此空间' : '已取消收藏');
-    });
-    $('btn-comment').addEventListener('click', () => toast('登录后查看 13 条评论'));
-    $('btn-share').addEventListener('click', async () => {
-        try {
-            await navigator.clipboard.writeText(location.href);
-            toast('链接已复制到剪贴板');
-        } catch {
-            toast('复制失败，请手动复制地址栏链接');
-        }
-    });
     $('btn-audio').addEventListener('click', () => toast('此空间没有环境音'));
 
     // ESC 关闭浮层

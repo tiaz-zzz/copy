@@ -154,32 +154,6 @@ button { font-family: var(--font); border: none; background: none; cursor: point
 .icon-btn:active { transform: scale(.93); }
 .icon-btn.dim { color: #9d9d9d; }
 
-/* 右侧互动栏 */
-#side-rail {
-    position: absolute; right: 18px; bottom: 130px;
-    display: flex; flex-direction: column; gap: 20px;
-    align-items: center;
-}
-.rail-btn {
-    position: relative;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    color: #fff;
-    filter: drop-shadow(0 1px 4px rgba(0,0,0,.55));
-    transition: transform .12s ease;
-}
-.rail-btn:active { transform: scale(.9); }
-.rail-btn .ic { width: 28px; height: 28px; }
-.rail-btn .count { font-size: 13px; font-weight: 700; color: #fff; }
-.rail-btn .badge {
-    position: absolute; top: -7px; right: -10px;
-    min-width: 19px; height: 19px; padding: 0 5px;
-    border-radius: 10px;
-    background: #e5484d; color: #fff;
-    font-size: 11px; font-weight: 700; line-height: 19px;
-}
-.rail-btn.liked .heart { fill: #ff4b55; stroke: #ff4b55; }
-.rail-btn.saved .bk { fill: #fff; }
-
 /* 右下 + 按钮 */
 #fab-plus {
     position: absolute; right: 18px; bottom: 22px;
@@ -357,7 +331,6 @@ button { font-family: var(--font); border: none; background: none; cursor: point
     #intro-creator { left: 22px; }
     #hint-card { width: 236px; padding: 44px 12px 12px; gap: 16px; }
     .key { width: 30px; height: 30px; font-size: 14px; }
-    #side-rail { bottom: 118px; right: 12px; gap: 16px; }
     #fab-plus { right: 12px; bottom: 18px; width: 52px; height: 52px; }
     #top-actions { top: 12px; right: 12px; gap: 10px; }
     .icon-btn { width: 42px; height: 42px; }
