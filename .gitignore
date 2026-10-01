@@ -1,0 +1,10 @@
+# 依赖目录（构建时由 npm 安装，站点本身不需要）
+node_modules/
+
+# 调试产物
+preview_*.png
+*.log
+
+# 系统文件
+Thumbs.db
+.DS_Store

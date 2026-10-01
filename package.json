@@ -1,0 +1,17 @@
+{
+  "name": "arrival-space-viewer-clone",
+  "version": "1.0.0",
+  "description": "Arrival.Space 风格 3D 高斯泼溅查看器（复刻 arrival.space/64122763_2334 页面 + 用户 .spz 场景）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "esbuild js/main.js --bundle --outfile=dist/bundle.js --minify --platform=browser",
+    "convert": "node tools/spz2ply.mjs"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@mkkellogg/gaussian-splats-3d": "^0.4.7",
+    "esbuild": "^0.28.2",
+    "three": "^0.170.0"
+  }
+}
