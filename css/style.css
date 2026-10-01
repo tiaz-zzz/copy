@@ -33,7 +33,18 @@ button { font-family: var(--font); border: none; background: none; cursor: point
     display: flex; align-items: center; justify-content: center;
     transition: opacity .5s ease;
 }
-#splash img { max-width: 400px; width: 70%; }
+.splash-brand { display: flex; flex-direction: column; align-items: center; gap: 32px; }
+.splash-logo {
+    width: 150px; height: auto;
+    border-radius: 28px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, .16);
+}
+.splash-wordmark {
+    font-size: 40px; font-weight: 600;
+    letter-spacing: .38em; margin-right: -.38em;
+    color: #17181a;
+    font-family: var(--font);
+}
 #splash.hidden { opacity: 0; pointer-events: none; }
 
 /* ============ 进入前介绍层 ============ */
@@ -91,14 +102,16 @@ button { font-family: var(--font); border: none; background: none; cursor: point
 
 #intro-enter {
     position: absolute; right: 26px; bottom: 26px;
-    width: 54px; height: 54px; border-radius: 50%;
-    background: rgba(30, 30, 30, 0.45);
+    width: 54px; height: 54px;
+    border-radius: 16px;
+    background: transparent;
     border: 2px solid rgba(255,255,255,.9);
+    overflow: hidden;
     display: flex; align-items: center; justify-content: center;
     transition: transform .15s ease, background .15s ease;
 }
-#intro-enter svg { width: 34px; height: 34px; }
-#intro-enter:hover { transform: scale(1.08); background: rgba(30,30,30,.65); }
+#intro-enter img { width: 100%; height: 100%; object-fit: cover; border-radius: 13px; }
+#intro-enter:hover { transform: scale(1.08); background: rgba(30,30,30,.35); }
 
 /* ============ 场景内 HUD ============ */
 #hud { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: none; }

@@ -23,9 +23,12 @@
     <!-- ======== 3D 场景画布 ======== -->
     <div id="scene-container"></div>
 
-    <!-- ======== 启动 splash：灰底 + Arrival 标志（最先绘制） ======== -->
+    <!-- ======== 启动 splash：灰底 + 伏羲科技标志（最先绘制） ======== -->
     <div id="splash" aria-hidden="true">
-        <img src="assets/arrival_logo.webp" alt="Arrival.Space" draggable="false">
+        <div class="splash-brand">
+            <img class="splash-logo" src="assets/fuxi_logo.png" alt="伏羲科技" draggable="false">
+            <div class="splash-wordmark">伏羲科技</div>
+        </div>
     </div>
 
     <!-- ======== 进入前介绍层：实时模糊场景 + 标题 + 作者 ======== -->
@@ -43,7 +46,7 @@
         <div id="intro-progress"><div id="intro-progress-bar"></div></div>
 
         <button id="intro-enter" aria-label="进入空间">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.4" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M6.6 16.2L12 5.4l5.4 10.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 16.2h6" stroke="#fff" stroke-width="1.7"/></svg>
+            <img src="assets/fuxi_logo.png" alt="" draggable="false">
         </button>
     </div>
 
