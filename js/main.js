@@ -124,13 +124,20 @@ function enterSpace() {
 
 // ---------- 第一人称鼠标视角 (Pointer Lock) ----------
 function setupMouseLook(canvas) {
-    canvas.addEventListener('click', () => {
-        if (pointerLocked) return;
-        try {
-            const p = canvas.requestPointerLock();
-            if (p && p.catch) p.catch(() => {});
-        } catch { /* 不支持时静默 */ }
-    });
+    // 拦截落在画布上的指针事件 (window 捕获阶段先于画布上的库监听):
+    // 阻断 mkkellogg 的"点击聚焦"(白圈标记 + 镜头强制飞过去), 指针锁定由自己完成
+    const canvasPointerGuard = (e) => {
+        if (e.target !== canvas) return;   // 点的是 UI 按钮 → 正常放行
+        e.stopPropagation();
+        if (e.type === 'pointerup' && !pointerLocked) {
+            try {
+                const p = canvas.requestPointerLock();
+                if (p && p.catch) p.catch(() => {});
+            } catch { /* 不支持时静默 */ }
+        }
+    };
+    window.addEventListener('pointerdown', canvasPointerGuard, true);
+    window.addEventListener('pointerup', canvasPointerGuard, true);
     document.addEventListener('pointerlockchange', () => {
         pointerLocked = document.pointerLockElement === canvas;
         toast(pointerLocked ? '第一视角已锁定 — 按 ESC 退出' : '已退出第一视角 — 点击画面继续');
