@@ -124,24 +124,23 @@ function axisAngleQuat(axis, deg) {
 function quatConj(q) { return [q[0], -q[1], -q[2], -q[3]]; }
 
 // 组合出总旋转四元数 (先 roll 后 yaw 的等效顺序对单一轴无影响, 两轴都用时按 roll→yaw)
+// 场景整体旋转: 位置 p'=R·p, 朝向 q'=r⊗q (世界系前乘)
 let ROT_Q = [1, 0, 0, 0]; // 单位四元数 (w,x,y,z)
 let ROT_FN = null;
 if (rollDeg !== 0 || yawDeg !== 0) {
     if (rollDeg !== 0) ROT_Q = quatMul(axisAngleQuat([1, 0, 0], rollDeg), ROT_Q);
     if (yawDeg !== 0) ROT_Q = quatMul(axisAngleQuat([0, 1, 0], yawDeg), ROT_Q);
-    const ROT_Q_INV = quatConj(ROT_Q);
     ROT_FN = {
         point: (p) => {
             // 向量旋转: v' = r ⊗ (0,v) ⊗ r⁻¹
             const qv = [0, p[0], p[1], p[2]];
             const r1 = quatMul(ROT_Q, qv);
-            const r2 = quatMul(r1, ROT_Q_INV);
+            const r2 = quatMul(r1, quatConj(ROT_Q));
             return [r2[1], r2[2], r2[3]];
         },
         quat: (q) => {
             const r1 = quatMul(ROT_Q, [q[0], q[1], q[2], q[3]]);
-            const r2 = quatMul(r1, ROT_Q_INV);
-            return [r2[0], r2[1], r2[2], r2[3]];
+            return r1;
         },
     };
     if (shDegree >= 1) {
