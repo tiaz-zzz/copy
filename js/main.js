@@ -26,15 +26,7 @@ let viewer = null;
 let entered = false;
 let toastTimer = null;
 const keys = new Set();
-const moveState = { x: 0, y: 0 };
-
-// XY 平面移动约束: Z 轴锁死, 移动/鼠标都不会改变 Z
-const CONSTRAIN = {
-    x: [-6.3, 12.5],   // 房间内部留边 (房间 x: -6.99 ~ 13.24)
-    y: [-2.4, 3.3],    // 房间内部留边 (旋转后 y: -2.73 ~ 3.62)
-    z: null,           // null = 锁定为进入时的初始 z
-};
-let LOCK_Z = 0;
+const moveState = { forward: 0, right: 0 };
 
 // ---------- 工具 ----------
 function toast(msg) {
@@ -89,20 +81,6 @@ async function initViewer() {
     // mkkellogg 需要显式启动渲染循环
     viewer.start();
 
-    // XY 平面移动模式: 锁定 Z, 关闭滚轮缩放与右键平移 (它们会改变 Z)
-    LOCK_Z = meta?.camera?.position?.[2] ?? viewer.camera.position.z;
-    viewer.controls.enableZoom = false;
-    viewer.controls.enablePan = false;
-    // 把轨道目标收到眼前 3 米, 拖动更接近"转头环顾"的手感
-    const dir = new THREE.Vector3(
-        meta?.camera?.target?.[0] ?? 0,
-        meta?.camera?.target?.[1] ?? 0,
-        meta?.camera?.target?.[2] ?? 0,
-    ).sub(viewer.camera.position).normalize();
-    viewer.controls.target.copy(viewer.camera.position).addScaledVector(dir, 3);
-    viewer.controls.target.z = LOCK_Z;
-    viewer.camera.lookAt(viewer.controls.target);
-
     // 场景就绪：撤掉灰 splash，显示介绍层
     splash.classList.add('hidden');
     setTimeout(() => splash.remove(), 600);
@@ -121,7 +99,7 @@ function enterSpace() {
     hud.classList.add('visible');
 }
 
-// ---------- WASD 移动 (XY 平面, Z 锁定) ----------
+// ---------- WASD 移动 ----------
 function setupMovement() {
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return;
@@ -138,11 +116,12 @@ function setupMovement() {
 }
 
 function updateMoveState() {
-    // 2D 平面映射: W/S = 上下 (Y), A/D = 前后 (X)
-    moveState.y = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) -
-                  (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-    moveState.x = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) -
-                  (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+    moveState.forward =
+        (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) -
+        (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+    moveState.right =
+        (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) -
+        (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
 }
 
 let lastT = 0;
@@ -151,25 +130,25 @@ function tick(t) {
     const dt = Math.min((t - lastT) / 1000, 0.1);
     lastT = t;
     if (!viewer || !entered) return;
+    if (!moveState.forward && !moveState.right) return;
 
     const camera = viewer.camera;
     const controls = viewer.controls;
-    if (controls) {
-        // 每帧强制约束: Z 锁定, XY 限制在房间内部 (位置与视线目标都约束)
-        if (moveState.x || moveState.y) {
-            const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 8 : 3.2) * dt;
-            const dx = moveState.x * speed;
-            const dy = moveState.y * speed;
-            camera.position.x += dx; controls.target.x += dx;
-            camera.position.y += dy; controls.target.y += dy;
-        }
-        camera.position.z = LOCK_Z;
-        controls.target.z = LOCK_Z;
-        camera.position.x = Math.min(CONSTRAIN.x[1], Math.max(CONSTRAIN.x[0], camera.position.x));
-        camera.position.y = Math.min(CONSTRAIN.y[1], Math.max(CONSTRAIN.y[0], camera.position.y));
-        controls.target.x = Math.min(CONSTRAIN.x[1], Math.max(CONSTRAIN.x[0], controls.target.x));
-        controls.target.y = Math.min(CONSTRAIN.y[1], Math.max(CONSTRAIN.y[0], controls.target.y));
-    }
+    const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 8 : 3.2) * dt;
+
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 1e-8) fwd.set(0, 0, -1);
+    fwd.normalize();
+
+    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+    const delta = new THREE.Vector3()
+        .addScaledVector(fwd, moveState.forward * speed)
+        .addScaledVector(right, moveState.right * speed);
+
+    camera.position.add(delta);
+    if (controls?.target) controls.target.add(delta);
 }
 
 // ---------- UI 事件 ----------
