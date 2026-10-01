@@ -30,6 +30,14 @@ const moveState = { forward: 0, right: 0 };
 let yaw = 0, pitch = 0;          // 第一人称视角角 (yaw 水平 / pitch 俯仰)
 let pointerLocked = false;       // 鼠标是否已锁定 (Pointer Lock)
 
+// 跳跃物理
+const GRAVITY = 14;              // 重力加速度 (m/s²)
+const JUMP_SPEED = 5.0;          // 起跳速度 → 跳高约 0.9m
+let vy = 0;                      // 垂直速度
+let grounded = true;             // 是否在地面
+let jumpQueued = false;          // 本帧是否按了跳
+let groundEyeY = null;           // 地面站立时的视线高度 (进入时记录)
+
 // ---------- 工具 ----------
 function toast(msg) {
     toastEl.textContent = msg;
@@ -92,6 +100,7 @@ async function initViewer() {
         viewer.camera.rotation.reorder('YXZ');
         yaw = viewer.camera.rotation.y;
         pitch = viewer.camera.rotation.x;
+        groundEyeY = viewer.camera.position.y;   // 以进入时的高度为地面视线高度
         setupMouseLook(canvas);
     }
 
@@ -143,6 +152,11 @@ function setupMovement() {
         if (e.repeat) return;
         const tag = document.activeElement?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        if (e.code === 'Space') {
+            e.preventDefault();          // 防止触发焦点按钮 / 页面滚动
+            jumpQueued = true;
+            return;
+        }
         keys.add(e.code);
         updateMoveState();
     });
@@ -168,10 +182,25 @@ function tick(t) {
     const dt = Math.min((t - lastT) / 1000, 0.1);
     lastT = t;
     if (!viewer || !entered) return;
+    const camera = viewer.camera;
+
+    // 跳跃与重力
+    if (jumpQueued) {
+        jumpQueued = false;
+        if (grounded) { vy = JUMP_SPEED; grounded = false; }
+    }
+    if (!grounded) {
+        camera.position.y += vy * dt;
+        vy -= GRAVITY * dt;
+        if (camera.position.y <= groundEyeY) {
+            camera.position.y = groundEyeY;
+            vy = 0;
+            grounded = true;
+        }
+    }
+
     if (!moveState.forward && !moveState.right) return;
 
-    const camera = viewer.camera;
-    const controls = viewer.controls;
     const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 8 : 3.2) * dt;
 
     const fwd = new THREE.Vector3();
