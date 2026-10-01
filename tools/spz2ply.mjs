@@ -24,6 +24,16 @@ const inPath = args[0] || join(dirname(fileURLToPath(import.meta.url)), '..', 'a
 const outPly = args[1] || join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scene.ply');
 const outMeta = args[2] || join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'scene-meta.json');
 
+// 可选场景旋转 (烘焙进数据):
+//   --roll 角度   绕 X 轴旋转 (右手定则; 从 -X 端朝 +X 看时, 正角度为逆时针)
+//   --yaw 角度    绕 Y 轴旋转 (俯视时逆时针)
+// 注意: 本转换只对位置/四元数生效; 若场景带 1 阶以上 SH 系数, 高阶颜色不会跟着旋转
+let rollDeg = 0, yawDeg = 0;
+for (let i = 3; i < args.length; i++) {
+    if (args[i] === '--roll') rollDeg = parseFloat(args[++i]) || 0;
+    else if (args[i] === '--yaw') yawDeg = parseFloat(args[++i]) || 0;
+}
+
 // ---------- 读取 & 解压 ----------
 const raw = readFileSync(inPath);
 let data;
@@ -96,6 +106,50 @@ const invSigmoid = (p) => {
     return Math.log(p / (1 - p));
 };
 
+// ---------- 场景旋转 ----------
+// 四元数乘法 (w,x,y,z); rotQuat 把单位四元数 q 绕轴旋转 r: q' = r ⊗ q ⊗ r⁻¹
+function quatMul(a, b) {
+    return [
+        a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+        a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+        a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+        a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
+    ];
+}
+function axisAngleQuat(axis, deg) {
+    const t = (deg * Math.PI) / 180;
+    const s = Math.sin(t / 2);
+    return [Math.cos(t / 2), axis[0] * s, axis[1] * s, axis[2] * s];
+}
+function quatConj(q) { return [q[0], -q[1], -q[2], -q[3]]; }
+
+// 组合出总旋转四元数 (先 roll 后 yaw 的等效顺序对单一轴无影响, 两轴都用时按 roll→yaw)
+let ROT_Q = [1, 0, 0, 0]; // 单位四元数 (w,x,y,z)
+let ROT_FN = null;
+if (rollDeg !== 0 || yawDeg !== 0) {
+    if (rollDeg !== 0) ROT_Q = quatMul(axisAngleQuat([1, 0, 0], rollDeg), ROT_Q);
+    if (yawDeg !== 0) ROT_Q = quatMul(axisAngleQuat([0, 1, 0], yawDeg), ROT_Q);
+    const ROT_Q_INV = quatConj(ROT_Q);
+    ROT_FN = {
+        point: (p) => {
+            // 向量旋转: v' = r ⊗ (0,v) ⊗ r⁻¹
+            const qv = [0, p[0], p[1], p[2]];
+            const r1 = quatMul(ROT_Q, qv);
+            const r2 = quatMul(r1, ROT_Q_INV);
+            return [r2[1], r2[2], r2[3]];
+        },
+        quat: (q) => {
+            const r1 = quatMul(ROT_Q, [q[0], q[1], q[2], q[3]]);
+            const r2 = quatMul(r1, ROT_Q_INV);
+            return [r2[0], r2[1], r2[2], r2[3]];
+        },
+    };
+    if (shDegree >= 1) {
+        console.warn('[spz2ply] 警告: 场景含 1 阶以上 SH 系数, 旋转只作用于位置/朝向, 视角相关颜色不会正确旋转!');
+    }
+    console.log(`[spz2ply] 应用场景旋转: roll=${rollDeg}° yaw=${yawDeg}°`);
+}
+
 // smallest-three 四元数: u32 = [iLargest:2][compA:10][compB:10][compC:10]
 // 每个字段: bit9 = 符号(相对最大分量归正后), bit0-8 = round(511 * |q| / √½)
 function unpackQuatSmallestThree(o) {
@@ -150,6 +204,7 @@ for (let i = 0; i < numPoints; i++) {
         y = readInt24(offPos + i * 9 + 3) * s;
         z = readInt24(offPos + i * 9 + 6) * s;
     }
+    if (ROT_FN) { [x, y, z] = ROT_FN.point([x, y, z]); }
     // alpha (logit)
     const opacity = invSigmoid(data[offAlpha + i] / 255);
     // 颜色 → SH DC 系数
@@ -164,6 +219,10 @@ for (let i = 0; i < numPoints; i++) {
     const q = smallestThree
         ? (() => { const [qx, qy, qz, qw] = unpackQuatSmallestThree(offRot + i * 4); return [qw, qx, qy, qz]; })()
         : unpackQuatFirstThree(offRot + i * 3);
+    if (ROT_FN) {
+        const rq = ROT_FN.quat(q);
+        q[0] = rq[0]; q[1] = rq[1]; q[2] = rq[2]; q[3] = rq[3];
+    }
 
     let k = 0;
     buf[k++] = x; buf[k++] = y; buf[k++] = z;
