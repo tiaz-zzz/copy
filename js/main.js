@@ -27,6 +27,8 @@ let entered = false;
 let toastTimer = null;
 const keys = new Set();
 const moveState = { forward: 0, right: 0 };
+let yaw = 0, pitch = 0;          // 第一人称视角角 (yaw 水平 / pitch 俯仰)
+let pointerLocked = false;       // 鼠标是否已锁定 (Pointer Lock)
 
 // ---------- 工具 ----------
 function toast(msg) {
@@ -81,6 +83,18 @@ async function initViewer() {
     // mkkellogg 需要显式启动渲染循环
     viewer.start();
 
+    // 第一人称模式: 接管鼠标视角 (桌面浏览器支持 Pointer Lock 时启用)
+    const canvas = viewer.renderer?.domElement;
+    if (canvas && 'requestPointerLock' in Element.prototype) {
+        // 废掉轨道控制器: mkkellogg 每帧 update() 会强制看向 target, 与手写视角冲突
+        viewer.controls.enabled = false;
+        viewer.controls.update = () => {};
+        viewer.camera.rotation.reorder('YXZ');
+        yaw = viewer.camera.rotation.y;
+        pitch = viewer.camera.rotation.x;
+        setupMouseLook(canvas);
+    }
+
     // 场景就绪：撤掉灰 splash，显示介绍层
     splash.classList.add('hidden');
     setTimeout(() => splash.remove(), 600);
@@ -97,6 +111,30 @@ function enterSpace() {
     introOverlay.classList.add('leaving');
     setTimeout(() => introOverlay.remove(), 900);
     hud.classList.add('visible');
+}
+
+// ---------- 第一人称鼠标视角 (Pointer Lock) ----------
+function setupMouseLook(canvas) {
+    canvas.addEventListener('click', () => {
+        if (pointerLocked) return;
+        try {
+            const p = canvas.requestPointerLock();
+            if (p && p.catch) p.catch(() => {});
+        } catch { /* 不支持时静默 */ }
+    });
+    document.addEventListener('pointerlockchange', () => {
+        pointerLocked = document.pointerLockElement === canvas;
+        toast(pointerLocked ? '第一视角已锁定 — 按 ESC 退出' : '已退出第一视角 — 点击画面继续');
+    });
+    document.addEventListener('pointerlockerror', () => toast('浏览器拒绝了鼠标锁定'));
+    document.addEventListener('mousemove', (e) => {
+        if (!pointerLocked) return;
+        yaw -= e.movementX * 0.0022;
+        pitch -= e.movementY * 0.0022;
+        pitch = Math.min(1.55, Math.max(-1.55, pitch));
+        viewer.camera.rotation.x = pitch;
+        viewer.camera.rotation.y = yaw;
+    });
 }
 
 // ---------- WASD 移动 ----------
@@ -148,7 +186,6 @@ function tick(t) {
         .addScaledVector(right, moveState.right * speed);
 
     camera.position.add(delta);
-    if (controls?.target) controls.target.add(delta);
 }
 
 // ---------- UI 事件 ----------
